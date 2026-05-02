@@ -1,0 +1,171 @@
+<!doctype html>
+<html>
+
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cominius</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+    canvas { flex: 1; width: 100%; }
+    button { padding: 6px 12px; }
+    #ui { display: flex; gap: 8px; padding: 10px; }
+    #commandInput { flex: 1; padding: 6px; }
+  </style>
+</head>
+
+<body>
+
+  <canvas id="canvas"></canvas>
+
+  <div id="ui">
+    <input id="commandInput" type="text" autocomplete="off" spellcheck="false"
+      value="u f 50 r 90 f 50 r 90 d x 4 [ f 100 r 90 ] u f 50 r 90 f 50 r 90 d">
+    <button id="runBtn">Run</button>
+    <button id="clearBtn">Clear</button>
+  </div>
+
+  <script>
+    const VOCABULARY = {
+      FORWARD: 'f',
+      BACKWARD: 'b',
+      RIGHT: 'r',
+      LET: 'l',
+      PEN_UP: 'u',
+      PEN_DOWN: 'd',
+      REPEAT: 'x',
+    };
+
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const canvasOffscreen = document.createElement('canvas');
+    const ctxOffscreen = canvasOffscreen.getContext('2d');
+
+    let turtleState = {};
+
+    function resetTurtle() {
+      turtleState = {
+        x: canvas.width / 2,
+        y: canvas.height / 2,
+        angle: -90,
+        penDown: true,
+      };
+    }
+
+    function setSize() {
+      const img = ctxOffscreen.getImageData(0, 0, canvasOffscreen.width, canvasOffscreen.height);
+      canvas.width = canvasOffscreen.width = canvas.offsetWidth;
+      canvas.height = canvasOffscreen.height = canvas.offsetHeight;
+      ctxOffscreen.putImageData(img, 0, 0);
+    }
+
+    function render() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(canvasOffscreen, 0, 0);
+      const size = 24;
+      ctx.save();
+      ctx.translate(turtleState.x, turtleState.y);
+      ctx.rotate((turtleState.angle + 90) * Math.PI / 180);
+      ctx.beginPath();
+      ctx.moveTo(0, -size);
+      ctx.lineTo(size * 0.55, size * 0.7);
+      ctx.lineTo(0, size * 0.3);
+      ctx.lineTo(-size * 0.55, size * 0.7);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function move(dist) {
+      const rad = turtleState.angle * Math.PI / 180;
+      const nx = turtleState.x + dist * Math.cos(rad);
+      const ny = turtleState.y + dist * Math.sin(rad);
+      if (turtleState.penDown) {
+        ctxOffscreen.beginPath();
+        ctxOffscreen.moveTo(turtleState.x, turtleState.y);
+        ctxOffscreen.lineTo(nx, ny);
+        ctxOffscreen.stroke();
+      }
+      turtleState.x = nx;
+      turtleState.y = ny;
+    }
+
+    const ZERO_ARG = new Set([VOCABULARY.PEN_UP, VOCABULARY.PEN_DOWN]);
+
+    function tokenize(src) {
+      return src.trim().split(/\s+/).filter(Boolean);
+    }
+
+    function parse(tokens, i = 0) {
+      const cmds = [];
+      while (i < tokens.length) {
+        const tok = tokens[i].toLowerCase();
+        if (tok === ']') break;
+        if (tok === VOCABULARY.REPEAT) {
+          const n = parseInt(tokens[i + 1]);
+          i += 2;
+          if (tokens[i] === '[') i++;
+          const [body, j] = parse(tokens, i);
+          i = j;
+          if (tokens[i] === ']') i++;
+          cmds.push({ cmd: VOCABULARY.REPEAT, n, body });
+        } else if (ZERO_ARG.has(tok)) {
+          cmds.push({ cmd: tok });
+          i++;
+        } else {
+          cmds.push({ cmd: tok, val: tokens[i + 1] });
+          i += 2;
+        }
+      }
+      return [cmds, i];
+    }
+
+    function exec(cmds) {
+      for (const c of cmds) {
+        switch (c.cmd) {
+          case VOCABULARY.FORWARD: move(+c.val); break;
+          case VOCABULARY.BACKWARD: move(-c.val); break;
+          case VOCABULARY.RIGHT: turtleState.angle += +c.val; break;
+          case VOCABULARY.LET: turtleState.angle -= +c.val; break;
+          case VOCABULARY.PEN_UP: turtleState.penDown = false; break;
+          case VOCABULARY.PEN_DOWN: turtleState.penDown = true; break;
+          case VOCABULARY.REPEAT:
+            for (let i = 0; i < c.n; i++) exec(c.body);
+            break;
+        }
+      }
+    }
+
+    function run() {
+      const raw = document.getElementById('commandInput').value.trim();
+      if (!raw) return;
+      const [cmds] = parse(tokenize(raw));
+      exec(cmds);
+      render();
+    }
+
+    function clear() {
+      ctxOffscreen.clearRect(0, 0, canvasOffscreen.width, canvasOffscreen.height);
+      resetTurtle();
+      render();
+    }
+
+    const inp = document.getElementById('commandInput');
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') run(); });
+    document.getElementById('runBtn').addEventListener('click', run);
+    document.getElementById('clearBtn').addEventListener('click', clear);
+
+    window.addEventListener('resize', () => { setSize(); render(); });
+
+    window.addEventListener('load', () => {
+      canvas.width = canvasOffscreen.width = canvas.offsetWidth;
+      canvas.height = canvasOffscreen.height = canvas.offsetHeight;
+      resetTurtle();
+      render();
+      inp.focus();
+    });
+  </script>
+
+</body>
+
+</html>
