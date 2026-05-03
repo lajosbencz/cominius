@@ -1,5 +1,7 @@
 # Cominius - Workshop
 
+![Teknős](turtle.png)
+
 ## Mi szükséges
 
 - Egy tetszőleges új mappa a fájlrendszeren, ahol dolgozni tudunk
