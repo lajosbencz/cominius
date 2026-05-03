@@ -1,6 +1,11 @@
-# Cominius – Workshop
+# Cominius - Workshop
 
-Egy óra alatt felépítünk egy teknős-grafika értelmezőt, amellyel egyszerű parancsokkal lehet rajzolni a böngészőben.
+## Mi szükséges
+
+- Egy tetszőleges új mappa a fájlrendszeren, ahol dolgozni tudunk
+- Bármely web-böngésző (Firefox/Chrome/Edge)
+- Szövegszerkesztő (Notepad/VSCode)
+- Figyelem
 
 ## Lépések
 
